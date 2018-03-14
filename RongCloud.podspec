@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
 
   s.source       = { :git => "https://github.com/ljyKangaroo/RongCloudKit.git", :tag => "#{s.version}" }
 
-  s.source_files  = "RongCloud/*.{a,plist,framework}"
+  s.source_files  = "RongCloud/**/*.{a,plist,framework}"
 
 
 end
