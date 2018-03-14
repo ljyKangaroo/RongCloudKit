@@ -16,7 +16,6 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/ljyKangaroo/RongCloudKit.git", :tag => "#{s.version}" }
 
   s.source_files  = "RongCloud/**/*"
-  s.xcconfig            = { "LIBRARY_SEARCH_PATHS" => "\"$(PODS_ROOT)/RongCloud/**\"" }
 
 
 end
