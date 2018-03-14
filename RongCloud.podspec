@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
 
-  s.name         = "RongCloud"
+  s.name         = "RongCloudKit"
   s.version      = "2.8.26"
   s.summary      = "RongCloud IM SDK"
   s.description  = <<-DESC
