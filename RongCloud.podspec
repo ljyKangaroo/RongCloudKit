@@ -15,7 +15,15 @@ Pod::Spec.new do |s|
 
   s.source       = { :git => "https://github.com/ljyKangaroo/RongCloudKit.git", :tag => "#{s.version}" }
 
-  s.source_files  = "RongCloud/**/*.{a,plist,framework}"
+  s.source_files = "RongCloud/**/*.{a}"
+  s.resource     = "RongCloud/**/*.{plist}"
+
+  s.vendored_frameworks = 'RongCloud/**/*.framework'
+
+  s.frameworks = 'CoreLocation', 'CoreTelephony', 'AVFoundation', 'Contacts', 'AddressBook', 'AudioToolbox', 'SystemConfiguration', 'QuartzCore', 'CoreGraphics'
+
+  s.requires_arc = true
+
 
 
 end
