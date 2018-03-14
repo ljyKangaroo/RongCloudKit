@@ -16,12 +16,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/ljyKangaroo/RongCloudKit.git", :tag => "#{s.version}" }
 
   s.source_files  = "RongCloud/**/*"
-  s.vendored_frameworks = 'RongCloud/**/*.framework'
   s.xcconfig            = { "LIBRARY_SEARCH_PATHS" => "\"$(PODS_ROOT)/RongCloud/**\"" }
-  s.resources = ['RongCloud/**/*.storyboard', 'RongCloud/**/*.xib', 'RongCloud/**/*.xcassets', 'RongCloud/**/*.lproj', 'RongCloud/**/*.plist', 'RongCloud/**/*.bundle']
 
-  s.frameworks = 'CoreLocation', 'CoreTelephony', 'AVFoundation', 'Contacts', 'AddressBook', 'AudioToolbox', 'SystemConfiguration', 'QuartzCore', 'CoreGraphics'
-
-  s.requires_arc = true
 
 end
