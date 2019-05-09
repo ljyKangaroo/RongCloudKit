@@ -1,5 +1,6 @@
 # 融云	
 
-目前是IMLib 2.8.26
+目前是IMLib 2.9.14
 
-没有libopencore-amrnb.a静态库，解决冲突专用。
+没有libopencore-amrnb.a、libopencore-amrwb静态库，解决冲突专用。
+
