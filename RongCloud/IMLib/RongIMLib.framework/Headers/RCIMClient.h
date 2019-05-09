@@ -60,6 +60,20 @@
 - (void)onReceived:(RCMessage *)message left:(int)nLeft object:(id)object;
 
 @optional
+
+/**
+ 接收消息的回调方法
+ 
+ @param message 当前接收到的消息
+ @param nLeft 还剩余的未接收的消息数，left>=0
+ @param object 消息监听设置的key值
+ @param offline 是否是离线消息
+ @param hasPackage SDK 拉取服务器的消息以包(package)的形式批量拉取，有 package 存在就意味着远端服务器还有消息尚未被 SDK 拉取
+ @discussion 和上面的 - (void)onReceived:(RCMessage *)message left:(int)nLeft object:(id)object 功能完全一致，额外把 offline 和 hasPackage 参数暴露，开发者可以根据 nLeft、offline、hasPackage 来决定何时的时机刷新 UI ；建议当 hasPackage=0 并且 nLeft=0 时刷新 UI
+ @warning 如果使用此方法，那么就不能再使用 RCIM 中 - (void)onReceived:(RCMessage *)message left:(int)nLeft object:(id)object 的使用，否则会出现重复操作的情形
+ */
+- (void)onReceived:(RCMessage *)message left:(int)nLeft object:(id)object offline:(BOOL)offline hasPackage:(BOOL)hasPackage;
+
 /*!
  消息被撤回的回调方法
 
@@ -169,10 +183,10 @@
 /*!
  IMLib输入状态的的监听器
 
- @discussion 设置IMLib的输入状态监听器，请参考RCIMClient的setRCTypingStatusDelegate:方法。
+ @discussion 设置IMLib的输入状态监听器，请参考RCIMClient的 setRCTypingStatusDelegate:方法。
 
  @warning
- 如果您使用IMLib，可以设置并实现此Delegate监听消息接收；如果您使用IMKit，请直接设置RCIM中的enableSendComposingStatus，而不要使用此监听器，否则会导致IMKit中无法自动更新UI！
+ 如果您使用IMLib，可以设置并实现此Delegate监听消息输入状态；如果您使用IMKit，请直接设置RCIM中的 enableTypingStatus，而不要使用此监听器，否则会导致IMKit中无法自动更新UI！
  */
 @protocol RCTypingStatusDelegate <NSObject>
 
@@ -426,6 +440,22 @@
  您只需要按照您的需求，使用disconnect:与disconnect以及logout三个接口其中一个即可。
  */
 - (void)logout;
+
+/**
+ 设置断线重连时是否踢出重连设备
+ 
+ @discussion
+ 用户没有开通多设备登录功能的前提下，同一个账号在一台新设备上登录的时候，会把这个账号在之前登录的设备上踢出。
+ 由于 SDK 有断线重连功能，存在下面情况。
+ 用户在 A 设备登录，A 设备网络不稳定，没有连接成功，SDK 启动重连机制。
+ 用户此时又在 B 设备登录，B 设备连接成功。
+ A 设备网络稳定之后，用户在 A 设备连接成功，B 设备被踢出。
+ 这个接口就是为这种情况加的。
+ 设置 enable 为 YES 时，SDK 重连的时候发现此时已有别的设备连接成功，不再强行踢出已有设备，而是踢出重连设备。
+
+ @param enable 是否踢出重连设备
+ */
+- (void)setReconnectKickEnable:(BOOL)enable;
 
 #pragma mark - 连接状态监听
 
@@ -1024,8 +1054,6 @@
  NSString *fromUserId = [notification.userInfo objectForKey:@"fId"];
 
  收到这个消息之后可以更新这个会话中messageTime以前的消息UI为已读（底层数据库消息状态已经改为已读）。
-
- @warning 目前仅支持单聊。
  */
 FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
 
@@ -1180,7 +1208,7 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
                           count:(int)count;
 
 /*!
- 获取会话中，从指定消息之前、指定数量的、指定消息类型、可以向前或向后查找的最新消息实体
+ 获取会话中，指定消息、指定数量、指定消息类型、向前或向后查找的消息实体列表
 
  @param conversationType    会话类型
  @param targetId            目标会话ID
@@ -1202,8 +1230,30 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
                           count:(int)count;
 
 /*!
+ 获取会话中，指定时间、指定数量、指定消息类型（多个）、向前或向后查找的消息实体列表
+ 
+ @param conversationType    会话类型
+ @param targetId            目标会话ID
+ @param objectNames         消息内容的类型名称列表
+ @param sentTime            当前的消息时间戳
+ @param isForward           查询方向 true为向前，false为向后
+ @param count               需要获取的消息数量
+ @return                    消息实体RCMessage对象列表
+ 
+ @discussion
+ 此方法会获取该会话中，sentTime之前或之后的、指定数量、指定消息类型（多个）的消息实体列表，返回的消息实体按照时间从新到旧排列。
+ 返回的消息中不包含sentTime对应的那条消息，如果会话中的消息数量小于参数count的值，会将该会话中的所有消息返回。
+ */
+- (NSArray *)getHistoryMessages:(RCConversationType)conversationType
+                       targetId:(NSString *)targetId
+                    objectNames:(NSArray *)objectNames
+                       sentTime:(long long)sentTime
+                      isForward:(BOOL)isForward
+                          count:(int)count;
+
+/*!
  在会话中搜索指定消息的前 beforeCount 数量和后 afterCount
- 数量的消息。返回的消息列表中会包含指定的消息。消息列表时间顺序从旧到新。
+ 数量的消息。返回的消息列表中会包含指定的消息。消息列表时间顺序从新到旧。
 
  @param conversationType    会话类型
  @param targetId            目标会话ID
@@ -1240,6 +1290,28 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
                            success:(void (^)(void))successBlock
                              error:(void (^)(RCErrorCode status))errorBlock;
 
+/*!
+ 清除历史消息
+ 
+ @param conversationType    会话类型
+ @param targetId            目标会话ID
+ @param recordTime          清除消息时间戳，【0 <= recordTime <= 当前会话最后一条消息的 sentTime,0 清除所有消息，其他值清除小于等于 recordTime 的消息】
+ @param clearRemote         是否同时删除服务端消息
+ @param successBlock        获取成功的回调
+ @param errorBlock          获取失败的回调 [status:清除失败的错误码]
+ 
+ @discussion
+ 此方法可以清除服务器端历史消息和本地消息，如果清除服务器端消息必须先开通历史消息云存储功能。
+ 例如，您不想从服务器上获取更多的历史消息，通过指定 recordTime 并设置 clearRemote 为 YES 清除消息，成功后只能获取该时间戳之后的历史消息。如果 clearRemote 传 NO，
+ 只会清除本地消息。
+ */
+- (void)clearHistoryMessages:(RCConversationType)conversationType
+                    targetId:(NSString *)targetId
+                  recordTime:(long long)recordTime
+                 clearRemote:(BOOL)clearRemote
+                     success:(void (^)(void))successBlock
+                       error:(void (^)(RCErrorCode status))errorBlock;
+
 
 /*!
  从服务器端获取之前的历史消息
@@ -1248,7 +1320,7 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  @param targetId            目标会话ID
  @param recordTime          截止的消息发送时间戳，毫秒
  @param count               需要获取的消息数量， 0 < count <= 20
- @param successBlock        获取成功的回调 [messages:获取到的历史消息数组]
+ @param successBlock        获取成功的回调 [messages:获取到的历史消息数组, isRemaining 是否还有剩余消息 YES 表示还有剩余，NO 表示无剩余]
  @param errorBlock          获取失败的回调 [status:获取失败的错误码]
 
  @discussion
@@ -1259,7 +1331,7 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
                         targetId:(NSString *)targetId
                       recordTime:(long long)recordTime
                            count:(int)count
-                         success:(void (^)(NSArray *messages))successBlock
+                         success:(void (^)(NSArray *messages,BOOL isRemaining))successBlock
                            error:(void (^)(RCErrorCode status))errorBlock;
 
 /*!
@@ -1319,6 +1391,16 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  */
 - (RCMessage *)getMessageByUId:(NSString *)messageUId;
 
+/**
+ * 获取会话里第一条未读消息。
+ *
+ * @param conversationType 会话类型
+ * @param targetId   会话 Id
+ * @return 第一条未读消息的实体。
+ */
+- (RCMessage *)getFirstUnreadMessage:(RCConversationType)conversationType
+                            targetId:(NSString *)targetId;
+
 /*!
  删除消息
 
@@ -1341,6 +1423,26 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
               targetId:(NSString *)targetId
                success:(void (^)(void))successBlock
                  error:(void (^)(RCErrorCode status))errorBlock;
+
+
+/**
+ 批量删除某个会话中的指定远端消息（同时删除对应的本地消息）
+
+ @param conversationType 会话类型，不支持聊天室
+ @param targetId 目标会话ID
+ @param messages 将被删除的消息列表
+ @param successBlock 成功的回调
+ @param errorBlock 失败的回调
+ 
+ @discussion 此方法会同时删除远端和本地消息。
+ 一次批量操作仅支持删除属于同一个会话的消息，请确保消息列表中的所有消息来自同一会话
+ 一次最多删除 100 条消息。
+ */
+- (void)deleteRemoteMessage:(RCConversationType)conversationType
+                   targetId:(NSString *)targetId
+                   messages:(NSArray<RCMessage *> *)messages
+                    success:(void (^)(void))successBlock
+                      error:(void (^)(RCErrorCode status))errorBlock;
 
 /*!
  删除某个会话中的所有消息
@@ -1428,6 +1530,8 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
 
  @param conversationTypeList 会话类型的数组(需要将RCConversationType转为NSNumber构建Array)
  @return                        是否删除成功
+ 
+ @discussion 此方法会从本地存储中删除该会话，同时删除会话中的消息。
  */
 - (BOOL)clearConversations:(NSArray *)conversationTypeList;
 
@@ -2191,6 +2295,15 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  */
 - (NSData *)encodeWAVEToAMR:(NSData *)data channel:(int)nChannels nBitsPerSample:(int)nBitsPerSample;
 
+#pragma mark - 语音消息设置
+/**
+ 语音消息采样率，默认8KHz
+ 
+ @discussion
+ 2.9.12 之前的版本只支持 8KHz。如果设置为 16KHz，老版本将无法播放 16KHz 的语音消息。
+ */
+@property (nonatomic, assign) RCSampleRate sampleRate;
+
 #pragma mark - 客服方法
 /*!
  发起客服聊天
@@ -2359,6 +2472,8 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
 
  @param kefuId                客服ID
  @param leaveMessageDic       客服留言信息字典，根据RCCSLeaveMessageItem中关于留言的配置存储对应的key-value
+ @param successBlock          成功回调
+ @param failureBlock          失败回调
  @discussion 此方法依赖startCustomerService方法。可在客服结束之前或之后调用。
  @discussion 如果一些值没有，可以传nil
  @warning
@@ -2377,13 +2492,30 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  @param targetId         会话ID
  @param keyword          关键字
  @param count            最大的查询数量
- @param startTime        查询记录的起始时间（传 0 表示不限时间）
+ @param startTime        查询 startTime 之前的消息（传 0 表示不限时间）
 
  @return 匹配的消息列表
  */
 - (NSArray<RCMessage *> *)searchMessages:(RCConversationType)conversationType
                                 targetId:(NSString *)targetId
                                  keyword:(NSString *)keyword
+                                   count:(int)count
+                               startTime:(long long)startTime;
+
+/*!
+ 按用户 ID 搜索指定会话中的消息
+ 
+ @param conversationType 会话类型
+ @param targetId         会话ID
+ @param userId           搜索用户ID
+ @param count            最大的查询数量
+ @param startTime        查询 startTime 之前的消息（传 0 表示不限时间）
+ 
+ @return 匹配的消息列表
+ */
+- (NSArray<RCMessage *> *)searchMessages:(RCConversationType)conversationType
+                                targetId:(NSString *)targetId
+                                  userId:(NSString *)userId
                                    count:(int)count
                                startTime:(long long)startTime;
 
@@ -2437,14 +2569,16 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  */
 - (void)getVendorToken:(void (^)(NSString *vendorToken))successBlock error:(void (^)(RCErrorCode nErrorCode))errorBlock;
 
-//远程推送相关设置
+/**
+ 远程推送相关设置
+ */
 @property(nonatomic, strong, readonly) RCPushProfile *pushProfile;
 
 #pragma mark - 历史消息
 /**
- 设置离线消息补偿时间（以天为单位）
+ 设置离线消息在服务端的存储时间（以天为单位）
 
- @param duration 离线消息补偿时间，范围【1~7天】
+ @param duration      存储时间，范围【1~7天】
  @param  successBlock 成功回调
  @param  errorBlock   失败回调
  */
@@ -2458,6 +2592,14 @@ FOUNDATION_EXPORT NSString *const RCLibDispatchReadReceiptNotification;
  @return 离线消息补偿时间
  */
 - (int)getOfflineMessageDuration;
+
+/**
+ 设置集成 sdk 的用户 App 版本信息。便于融云排查问题时，作为分析依据，属于自愿行为。
+ 
+ @param  appVer   用户 APP 的版本信息。
+ */
+- (void)setAppVer:(NSString *)appVer;
+
 @end
 
 #endif

@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "RongCloudKit"
-  s.version      = "2.8.26"
+  s.version      = "2.9.14"
   s.summary      = "RongCloud IM SDK"
   s.description  = <<-DESC
                     RongCloud IM SDK for iOS
@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
 
   s.resource     = "RongCloud/**/RCConfig.plist"
   s.vendored_frameworks = 'RongCloud/**/*.framework'
-  
+  s.vendored_libraries = 'RongCloud/**/*.a'
   s.frameworks = 'CoreLocation', 'CoreTelephony', 'AVFoundation', 'Contacts', 'AddressBook', 'AudioToolbox', 'SystemConfiguration', 'QuartzCore', 'CoreGraphics'
   
   s.requires_arc = true
