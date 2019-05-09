@@ -17,7 +17,6 @@ Pod::Spec.new do |s|
 
   s.resource     = "RongCloud/**/RCConfig.plist"
   s.vendored_frameworks = 'RongCloud/**/*.framework'
-  s.vendored_libraries = 'RongCloud/**/*.a'
   
   s.frameworks = 'CoreLocation', 'CoreTelephony', 'AVFoundation', 'Contacts', 'AddressBook', 'AudioToolbox', 'SystemConfiguration', 'QuartzCore', 'CoreGraphics'
   
